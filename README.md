@@ -22,11 +22,7 @@ A comprehensive [Model Context Protocol (MCP)](https://modelcontextprotocol.io) 
 
 ## 📦 Installation & Configuration
 
-### 1. Claude Desktop / Cursor / Cline / Pi
-
-Add to your MCP configuration file (e.g. `claude_desktop_config.json` or `mcp.json`):
-
-#### Using `npx` (Recommended):
+### Option A: Using `npx` (Recommended)
 ```json
 {
   "mcpServers": {
@@ -38,7 +34,17 @@ Add to your MCP configuration file (e.g. `claude_desktop_config.json` or `mcp.js
 }
 ```
 
-#### Using Local Source:
+### Option B: From Source (Clone & Run Locally)
+
+1. Clone and build the server:
+```bash
+git clone https://github.com/KonghuanSmart/calculate-mcp.git
+cd calculate-mcp
+npm install
+npm run build
+```
+
+2. Add to your MCP client config (e.g. `claude_desktop_config.json` or `mcp.json`):
 ```json
 {
   "mcpServers": {

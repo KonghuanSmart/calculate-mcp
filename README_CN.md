@@ -22,11 +22,7 @@
 
 ## 📦 安装与客户端配置
 
-### 1. Claude Desktop / Cursor / Cline / Pi
-
-在客户端的 MCP 配置文件中（如 `claude_desktop_config.json` 或 `mcp.json`）添加如下配置：
-
-#### 使用 `npx` 直接运行（推荐，免手动克隆与安装）：
+### 方式 A：通过 `npx` 运行（推荐，开箱即用免克隆）
 ```json
 {
   "mcpServers": {
@@ -38,13 +34,23 @@
 }
 ```
 
-#### 使用本地源码运行：
+### 方式 B：通过本地源码运行（当前直接可用）
+
+1. 克隆并编译项目：
+```bash
+git clone https://github.com/KonghuanSmart/calculate-mcp.git
+cd calculate-mcp
+npm install
+npm run build
+```
+
+2. 在 MCP 配置文件中（如 `claude_desktop_config.json` 或 `mcp.json`）添加：
 ```json
 {
   "mcpServers": {
     "calculate-mcp": {
       "command": "node",
-      "args": ["/绝对路径/calculate-mcp/build/index.js"]
+      "args": ["/项目绝对路径/calculate-mcp/build/index.js"]
     }
   }
 }

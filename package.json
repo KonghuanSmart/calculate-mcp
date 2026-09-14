@@ -2,9 +2,7 @@
   "name": "calculate-mcp",
   "version": "0.1.0",
   "main": "build/index.js",
-  "bin": {
-    "calculate-mcp": "./build/index.js"
-  },
+  "bin": "./build/index.js",
   "module": "src/index.ts",
   "type": "module",
   "scripts": {
