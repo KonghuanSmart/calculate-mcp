@@ -1,0 +1,41 @@
+{
+  "name": "calculate-mcp",
+  "version": "0.1.0",
+  "main": "build/index.js",
+  "bin": {
+    "calculate-mcp": "./build/index.js"
+  },
+  "module": "src/index.ts",
+  "type": "module",
+  "scripts": {
+    "build": "tsc && node -e \"require('fs').chmodSync('build/index.js', '755')\"",
+    "start": "node build/index.js",
+    "stdio": "npm run build && npm run start",
+    "test": "npx vitest run src/"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "calculate",
+    "bitwise",
+    "endianness",
+    "ieee754",
+    "crypto",
+    "math"
+  ],
+  "files": [
+    "build"
+  ],
+  "author": "",
+  "license": "MIT",
+  "description": "Comprehensive MCP server providing numerical calculation, bitwise operations, data codecs, and mathematical utilities",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.6.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.5",
+    "typescript": "^5.7.3",
+    "vitest": "^3.2.4"
+  }
+}
