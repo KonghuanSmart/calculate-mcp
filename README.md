@@ -1,6 +1,6 @@
 # calculate-mcp
 
-[English](README.md) | [简体中文](README_CN.md)
+[English](https://github.com/KonghuanSmart/calculate-mcp/blob/main/README.md) | [简体中文](https://github.com/KonghuanSmart/calculate-mcp/blob/main/README_CN.md)
 
 [![npm version](https://img.shields.io/npm/v/calculate-mcp.svg)](https://www.npmjs.com/package/calculate-mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
@@ -161,7 +161,7 @@ Decompose machine code `0x3f800000` into float components:
 
 ```bash
 # Clone the repository
-git clone https://github.com/<your-username>/calculate-mcp.git
+git clone https://github.com/KonghuanSmart/calculate-mcp.git
 cd calculate-mcp
 
 # Install dependencies
@@ -176,6 +176,29 @@ npm start
 
 ---
 
+## 🤖 Companion Agent Skill (Prompt & Tool Guidance)
+
+To prevent AI coding agents (such as Pi, Claude Code, Cursor, etc.) from suffering "mental calculation hallucinations" when dealing with arithmetic, radix conversions, bitwise logic, endianness swapping, and cryptographic hashing, this repository provides a ready-to-use companion Skill specification in `skills/calculate-mcp` (`SKILL.md`).
+
+### Installation
+
+Copy or symlink `skills/calculate-mcp` into your agent's skills directory:
+
+**For Pi Agent / Universal Agent Harnesses:**
+```powershell
+# Windows (PowerShell):
+Copy-Item -Recurse -Force "skills/calculate-mcp" "$HOME/.agents/skills/"
+```
+
+```bash
+# Linux / macOS:
+cp -r skills/calculate-mcp ~/.agents/skills/
+```
+
+Once installed, the agent will automatically trigger and prioritize calling `calculate-mcp` tools whenever precise arithmetic, radix conversions (Hex/Bin/Dec/Oct), bitwise operations (AND/OR/XOR), endianness swaps, or hash/encoding tasks are requested.
+
+---
+
 ## 📄 License
 
-[MIT License](LICENSE) © 2026
+[MIT License](https://github.com/KonghuanSmart/calculate-mcp/blob/main/LICENSE) © 2026

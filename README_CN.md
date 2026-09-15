@@ -1,6 +1,6 @@
 # calculate-mcp
 
-[English](README.md) | [简体中文](README_CN.md)
+[English](https://github.com/KonghuanSmart/calculate-mcp/blob/main/README.md) | [简体中文](https://github.com/KonghuanSmart/calculate-mcp/blob/main/README_CN.md)
 
 [![npm version](https://img.shields.io/npm/v/calculate-mcp.svg)](https://www.npmjs.com/package/calculate-mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
@@ -161,7 +161,7 @@ npm run build
 
 ```bash
 # 克隆仓库
-git clone https://github.com/<你的用户名>/calculate-mcp.git
+git clone https://github.com/KonghuanSmart/calculate-mcp.git
 cd calculate-mcp
 
 # 安装依赖
@@ -176,6 +176,29 @@ npm start
 
 ---
 
+## 🤖 Agent 配套 Skill 安装 (Prompt / Tool Guidance)
+
+为了防止 AI 编码助手（如 Pi、Claude Code、Cursor 等）在遇到数学、进制转换、位运算与哈希计算时产生心算幻觉，本项目在 `skills/calculate-mcp` 目录下提供了专用的配套 Skill 规范（`SKILL.md`）。
+
+### 安装方式
+
+将项目内的 `skills/calculate-mcp` 复制或软链接至 Agent 的 skills 目录：
+
+**对于 Pi Agent / 通用 Agent：**
+```powershell
+# Windows (PowerShell):
+Copy-Item -Recurse -Force "skills/calculate-mcp" "$HOME/.agents/skills/"
+```
+
+```bash
+# Linux / macOS:
+cp -r skills/calculate-mcp ~/.agents/skills/
+```
+
+安装后，Agent 在识别到数学计算、进制转换（Hex/Bin/Dec/Oct）、位运算（AND/OR/XOR）、大小端转换（Endian Swap）或 Hash/Base64 处理需求时，将自动主动调用 `calculate-mcp` 对应工具。
+
+---
+
 ## 📄 开源协议
 
-[MIT License](LICENSE) © 2026
+[MIT License](https://github.com/KonghuanSmart/calculate-mcp/blob/main/LICENSE) © 2026

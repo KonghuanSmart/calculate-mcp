@@ -1,6 +1,6 @@
 {
   "name": "calculate-mcp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "main": "build/index.js",
   "bin": "./build/index.js",
   "module": "src/index.ts",
@@ -22,10 +22,16 @@
     "math"
   ],
   "files": [
-    "build"
+    "build",
+    "skills"
   ],
-  "author": "",
+  "author": "KonghuanSmart",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/KonghuanSmart/calculate-mcp.git"
+  },
+  "homepage": "https://github.com/KonghuanSmart/calculate-mcp#readme",
   "description": "Comprehensive MCP server providing numerical calculation, bitwise operations, data codecs, and mathematical utilities",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.6.0",
