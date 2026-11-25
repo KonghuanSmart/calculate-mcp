@@ -1,3 +1,55 @@
+const MAX_INLINE_BYTES = 64;
+
+export interface ByteView {
+    hex: string;
+    length: number;
+    hexFormatted?: string;
+    bytes?: number[];
+    decoded?: string;
+}
+
+export function decodeHexBytes(hexStr: string): Buffer {
+    const clean = hexStr.replace(/^0x/i, "").replace(/[\s_:]/g, "");
+    if (clean === "") {
+        return Buffer.alloc(0);
+    }
+    if (!/^[0-9a-fA-F]+$/.test(clean)) {
+        throw new Error(`Invalid hex input: "${hexStr}" contains non-hexadecimal characters`);
+    }
+    if (clean.length % 2 !== 0) {
+        throw new Error(`Invalid hex input: "${hexStr}" has an odd number of digits (${clean.length})`);
+    }
+    return Buffer.from(clean, "hex");
+}
+
+export function decodeBase64Bytes(base64Str: string): Buffer {
+    let clean = base64Str.trim().replace(/-/g, "+").replace(/_/g, "/");
+    while (clean.length % 4 !== 0) {
+        clean += "=";
+    }
+    if (!/^[A-Za-z0-9+/]*={0,2}$/.test(clean)) {
+        throw new Error(`Invalid Base64 input: "${base64Str}" contains characters outside the Base64 alphabet`);
+    }
+    return Buffer.from(clean, "base64");
+}
+
+function printableUtf8(buf: Buffer): string | undefined {
+    let text: string;
+    try {
+        text = new TextDecoder("utf-8", { fatal: true }).decode(buf);
+    } catch {
+        return undefined;
+    }
+    for (const char of text) {
+        const code = char.codePointAt(0) as number;
+        const isControl = (code < 0x20 && code !== 0x09 && code !== 0x0a && code !== 0x0d) || code === 0x7f;
+        if (isControl) {
+            return undefined;
+        }
+    }
+    return text;
+}
+
 export class DataCodec {
     /**
      * Encodes string or hex bytes to Base64 (standard or url-safe).
@@ -8,7 +60,7 @@ export class DataCodec {
         urlSafe: boolean = false
     ): string {
         const buf = inputFormat === "hex"
-            ? Buffer.from(input.replace(/^0x/i, "").replace(/[\s_]/g, ""), "hex")
+            ? decodeHexBytes(input)
             : Buffer.from(input, "utf8");
 
         let b64 = buf.toString("base64");
@@ -19,19 +71,26 @@ export class DataCodec {
     }
 
     /**
-     * Decodes Base64 to string or hex format.
+     * Decodes Base64 bytes without any character-set interpretation.
      */
-    public static fromBase64(
-        base64Str: string,
-        outputFormat: "text" | "hex" = "text"
-    ): string {
-        let cleanB64 = base64Str.trim().replace(/-/g, "+").replace(/_/g, "/");
-        while (cleanB64.length % 4 !== 0) {
-            cleanB64 += "=";
-        }
+    public static fromBase64(base64Str: string): Buffer {
+        return decodeBase64Bytes(base64Str);
+    }
 
-        const buf = Buffer.from(cleanB64, "base64");
-        return outputFormat === "hex" ? "0x" + buf.toString("hex") : buf.toString("utf8");
+    public static describeBytes(buf: Buffer): ByteView {
+        const view: ByteView = {
+            hex: "0x" + buf.toString("hex"),
+            length: buf.length
+        };
+        if (buf.length <= MAX_INLINE_BYTES) {
+            view.hexFormatted = Array.from(buf).map(b => b.toString(16).padStart(2, "0")).join(" ");
+            view.bytes = Array.from(buf);
+        }
+        const text = printableUtf8(buf);
+        if (text !== undefined) {
+            view.decoded = text;
+        }
+        return view;
     }
 
     /**
@@ -49,12 +108,10 @@ export class DataCodec {
     }
 
     /**
-     * Converts Hex string back to text (UTF-8).
+     * Converts a Hex string to raw bytes.
      */
-    public static hexToString(hexStr: string): string {
-        const clean = hexStr.replace(/^0x/i, "").replace(/[\s_]/g, "");
-        const buf = Buffer.from(clean, "hex");
-        return buf.toString("utf8");
+    public static hexToBuffer(hexStr: string): Buffer {
+        return decodeHexBytes(hexStr);
     }
 
     /**

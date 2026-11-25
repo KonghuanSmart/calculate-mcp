@@ -1,18 +1,70 @@
 import * as crypto from "crypto";
 import { IntegerConversion } from "./integer.js";
+import { decodeHexBytes } from "./codec.js";
+
+export const HASH_ALGORITHMS = ["md5", "sha1", "sha256", "sha384", "sha512"] as const;
+
+export type HashAlgorithm = (typeof HASH_ALGORITHMS)[number];
+
+export function normalizeAlgorithm(value: string): string {
+    return value.trim().toLowerCase().replace(/[-_\s]/g, "");
+}
+
+export function isHashAlgorithm(value: string): value is HashAlgorithm {
+    return (HASH_ALGORITHMS as readonly string[]).includes(value);
+}
+
+export function parseHashAlgorithm(value: string): HashAlgorithm {
+    const normalized = normalizeAlgorithm(value);
+    if (isHashAlgorithm(normalized)) {
+        return normalized;
+    }
+    throw new Error(`Unknown algorithm "${value}"; expected one of: ${HASH_ALGORITHMS.join(", ")}`);
+}
+
+function toBuffer(value: string, inputFormat: "text" | "hex"): Buffer {
+    return inputFormat === "hex" ? decodeHexBytes(value) : Buffer.from(value, "utf8");
+}
+
+function cipherNameFor(key: Buffer): { algorithm: string; keyBits: number } {
+    switch (key.length) {
+        case 16:
+            return { algorithm: "aes-128-cbc", keyBits: 128 };
+        case 24:
+            return { algorithm: "aes-192-cbc", keyBits: 192 };
+        case 32:
+            return { algorithm: "aes-256-cbc", keyBits: 256 };
+        default:
+            throw new Error(`Invalid AES key length: ${key.length} bytes (${key.length * 8} bits); expected 16, 24, or 32 bytes for AES-128/192/256`);
+    }
+}
+
+export interface AesEncryptResult {
+    algorithm: string;
+    keyBits: number;
+    ciphertextHex: string;
+    ciphertextBase64: string;
+    length: number;
+}
+
+export interface AesDecryptResult {
+    algorithm: string;
+    keyBits: number;
+    hex: string;
+    length: number;
+    plaintext?: string;
+}
 
 export class CryptoCalc {
     /**
-     * Calculates MD5, SHA-1, or SHA-256 hash of text or hex buffer.
+     * Calculates a hash (MD5, SHA-1, SHA-256, SHA-384, SHA-512) of text or hex buffer.
      */
     public static hash(
-        algorithm: "md5" | "sha1" | "sha256",
+        algorithm: HashAlgorithm,
         data: string,
         inputFormat: "text" | "hex" = "text"
     ): { algorithm: string; input: string; hex: string; base64: string } {
-        const buf = inputFormat === "hex"
-            ? Buffer.from(data.replace(/^0x/i, "").replace(/[\s_]/g, ""), "hex")
-            : Buffer.from(data, "utf8");
+        const buf = toBuffer(data, inputFormat);
 
         const h = crypto.createHash(algorithm).update(buf);
         return {
@@ -23,6 +75,89 @@ export class CryptoCalc {
         };
     }
 
+    public static hmac(
+        algorithm: HashAlgorithm,
+        key: string,
+        data: string,
+        inputFormat: "text" | "hex" = "text"
+    ): { algorithm: string; key: string; input: string; hex: string; base64: string } {
+        const keyBuf = toBuffer(key, inputFormat);
+        const dataBuf = toBuffer(data, inputFormat);
+
+        const h = crypto.createHmac(algorithm, keyBuf).update(dataBuf);
+        const hex = h.digest("hex");
+        return {
+            algorithm: `hmac-${algorithm}`,
+            key,
+            input: data,
+            hex,
+            base64: Buffer.from(hex, "hex").toString("base64")
+        };
+    }
+
+    public static aesEncrypt(
+        key: string,
+        iv: string,
+        data: string,
+        inputFormat: "text" | "hex" = "text",
+        keyFormat: "text" | "hex" = "text"
+    ): AesEncryptResult {
+        const keyBuf = toBuffer(key, keyFormat);
+        const ivBuf = toBuffer(iv, keyFormat);
+        const { algorithm, keyBits } = cipherNameFor(keyBuf);
+        if (ivBuf.length !== 16) {
+            throw new Error(`Invalid AES IV length: ${ivBuf.length} bytes; AES-CBC requires a 16-byte IV`);
+        }
+
+        const cipher = crypto.createCipheriv(algorithm, keyBuf, ivBuf);
+        const out = Buffer.concat([cipher.update(toBuffer(data, inputFormat)), cipher.final()]);
+        return {
+            algorithm,
+            keyBits,
+            ciphertextHex: "0x" + out.toString("hex"),
+            ciphertextBase64: out.toString("base64"),
+            length: out.length
+        };
+    }
+
+    public static aesDecrypt(
+        key: string,
+        iv: string,
+        data: string,
+        inputFormat: "text" | "hex" = "text",
+        keyFormat: "text" | "hex" = "text"
+    ): AesDecryptResult {
+        const keyBuf = toBuffer(key, keyFormat);
+        const ivBuf = toBuffer(iv, keyFormat);
+        const { algorithm, keyBits } = cipherNameFor(keyBuf);
+        if (ivBuf.length !== 16) {
+            throw new Error(`Invalid AES IV length: ${ivBuf.length} bytes; AES-CBC requires a 16-byte IV`);
+        }
+
+        const payload = toBuffer(data, inputFormat);
+        const decipher = crypto.createDecipheriv(algorithm, keyBuf, ivBuf);
+        let out: Buffer;
+        try {
+            out = Buffer.concat([decipher.update(payload), decipher.final()]);
+        } catch (error) {
+            const reason = error instanceof Error ? error.message : String(error);
+            throw new Error(`AES decryption failed: wrong key/IV or corrupted ciphertext (PKCS#7 padding check failed); ${reason}`);
+        }
+        const text = new TextDecoder("utf-8", { fatal: true });
+        const result: AesDecryptResult = {
+            algorithm,
+            keyBits,
+            hex: "0x" + out.toString("hex"),
+            length: out.length
+        };
+        try {
+            result.plaintext = text.decode(out);
+        } catch {
+            delete result.plaintext;
+        }
+        return result;
+    }
+
     /**
      * Calculates standard IEEE 802.3 CRC32 checksum.
      */
@@ -30,9 +165,7 @@ export class CryptoCalc {
         checksumHex: string;
         checksumDec: number;
     } {
-        const buf = inputFormat === "hex"
-            ? Buffer.from(data.replace(/^0x/i, "").replace(/[\s_]/g, ""), "hex")
-            : Buffer.from(data, "utf8");
+        const buf = toBuffer(data, inputFormat);
 
         // Precomputed CRC32 table
         let crc = 0 ^ (-1);
@@ -62,9 +195,7 @@ export class CryptoCalc {
         variant: "ccitt" | "modbus" = "modbus",
         inputFormat: "text" | "hex" = "text"
     ): { variant: string; checksumHex: string; checksumDec: number } {
-        const buf = inputFormat === "hex"
-            ? Buffer.from(data.replace(/^0x/i, "").replace(/[\s_]/g, ""), "hex")
-            : Buffer.from(data, "utf8");
+        const buf = toBuffer(data, inputFormat);
 
         let crc = variant === "modbus" ? 0xffff : 0x0000;
         const poly = variant === "modbus" ? 0xa001 : 0x1021;

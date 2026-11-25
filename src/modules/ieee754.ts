@@ -32,6 +32,16 @@ export interface IEEE754Result {
     float64?: Float64Analysis;
 }
 
+export const IEEE754_PRECISIONS = ["float32", "float64", "both"] as const;
+export type IeeePrecision = (typeof IEEE754_PRECISIONS)[number];
+
+const HEX_WORD_PATTERN = /^(?:0[xX])?([0-9a-fA-F]+)$/;
+const PRECISION_HEX_LENGTHS: Record<IeeePrecision, readonly number[]> = {
+    float32: [8],
+    float64: [16],
+    both: [8, 16]
+};
+
 export class IEEE754 {
     /**
      * Parses and analyzes 32-bit float (Single precision).
@@ -114,55 +124,65 @@ export class IEEE754 {
     }
 
     /**
-     * Converts a float number or hex/binary representation into IEEE 754 analysis.
+     * Converts a float number or hex machine word into IEEE 754 analysis.
      */
-    public static convert(input: string | number, precision: "float32" | "float64" | "both" = "both"): IEEE754Result {
-        // If input is a hex string (e.g. 0x3f800000 or 3f800000)
-        if (typeof input === "string" && (input.startsWith("0x") || input.startsWith("0X") || /^[0-9a-fA-F]+$/.test(input))) {
-            const cleanHex = input.replace(/^0x/i, "");
-            const byteLen = cleanHex.length <= 8 ? 4 : 8;
-            const fullHex = cleanHex.padStart(byteLen * 2, "0");
-            const buf = Buffer.from(fullHex, "hex");
-
-            if (byteLen === 4) {
-                const f32 = this.analyzeFloat32(new Uint8Array(buf));
+    public static convert(input: string | number, precision: IeeePrecision = "both"): IEEE754Result {
+        if (typeof input === "string") {
+            const word = this.hexWordBytes(input, precision);
+            if (word.length === 4) {
+                const f32 = this.analyzeFloat32(new Uint8Array(word));
                 const f64Buf = Buffer.alloc(8);
                 f64Buf.writeDoubleBE(f32.value, 0);
                 const f64 = this.analyzeFloat64(new Uint8Array(f64Buf));
-
-                return {
-                    input,
-                    float32: precision === "float64" ? undefined : f32,
-                    float64: precision === "float32" ? undefined : f64
-                };
-            } else {
-                const f64 = this.analyzeFloat64(new Uint8Array(buf));
-                const f32Buf = Buffer.alloc(4);
-                f32Buf.writeFloatBE(f64.value, 0);
-                const f32 = this.analyzeFloat32(new Uint8Array(f32Buf));
-
-                return {
-                    input,
-                    float32: precision === "float64" ? undefined : f32,
-                    float64: precision === "float32" ? undefined : f64
-                };
+                return this.selectPrecision(input, f32, f64, precision);
             }
+            const f64 = this.analyzeFloat64(new Uint8Array(word));
+            const f32Buf = Buffer.alloc(4);
+            f32Buf.writeFloatBE(f64.value, 0);
+            const f32 = this.analyzeFloat32(new Uint8Array(f32Buf));
+            return this.selectPrecision(input, f32, f64, precision);
         }
 
-        // Numeric float input (e.g. 1.0, 3.14159, or string decimal "3.14159")
-        const numVal = typeof input === "number" ? input : parseFloat(input);
-        if (isNaN(numVal)) {
-            throw new Error(`Invalid float input: "${input}"`);
+        if (Number.isNaN(input)) {
+            throw new Error("Invalid float input: NaN");
         }
 
         const buf32 = Buffer.alloc(4);
-        buf32.writeFloatBE(numVal, 0);
+        buf32.writeFloatBE(input, 0);
         const f32 = this.analyzeFloat32(new Uint8Array(buf32));
 
         const buf64 = Buffer.alloc(8);
-        buf64.writeDoubleBE(numVal, 0);
+        buf64.writeDoubleBE(input, 0);
         const f64 = this.analyzeFloat64(new Uint8Array(buf64));
 
+        return this.selectPrecision(input, f32, f64, precision);
+    }
+
+    /**
+     * Reads a hex machine word, rejecting anything that is not exactly the length its precision needs.
+     */
+    private static hexWordBytes(input: string, precision: IeeePrecision): Buffer {
+        const match = HEX_WORD_PATTERN.exec(input.trim());
+        if (match === null) {
+            throw new Error(`Invalid IEEE 754 input "${input}": a string is read as a hex machine word (hex digits, optionally with a 0x prefix); pass a decimal float as a number instead (e.g. 3.5)`);
+        }
+        const digits = match[1];
+        const lengths = PRECISION_HEX_LENGTHS[precision];
+        if (!lengths.includes(digits.length)) {
+            const expected = lengths
+                .map(length => `${length} hex characters for ${length === 8 ? "float32" : "float64"}`)
+                .join(" or ");
+            throw new Error(`Invalid IEEE 754 hex word "${input}": expected exactly ${expected}, got ${digits.length}; pass a decimal float as a number instead (e.g. 3.5)`);
+        }
+        return Buffer.from(digits, "hex");
+    }
+
+    private static selectPrecision(
+        input: string | number,
+        f32: Float32Analysis,
+        f64: Float64Analysis,
+        precision: IeeePrecision
+    ): IEEE754Result {
         return {
             input,
             float32: precision === "float64" ? undefined : f32,

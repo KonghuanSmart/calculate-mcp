@@ -4,6 +4,10 @@
  * signed/unsigned bit widths, and endianness representation.
  */
 
+const SUFFIX_RADIX_PATTERN = /^([+-]?)([0-9a-fA-F]+)([bBoOhH])$/;
+
+import { assertExactNumber } from "./arithmetic.js";
+
 export interface ConversionResult {
     input: string | number;
     decimal: string;
@@ -13,6 +17,7 @@ export interface ConversionResult {
     binaryFormatted: string;
     octal: string;
     ascii?: string;
+    twosComplementHex?: string;
     bitWidths: {
         bit8: {
             unsigned: number;
@@ -46,9 +51,7 @@ export class IntegerConversion {
      */
     public static parseToBigInt(raw: string | number): bigint {
         if (typeof raw === "number") {
-            if (!Number.isFinite(raw)) {
-                throw new Error(`Invalid numeric input: ${raw}`);
-            }
+            assertExactNumber(raw);
             return BigInt(Math.trunc(raw));
         }
 
@@ -67,6 +70,13 @@ export class IntegerConversion {
             }
             if (trimmed.startsWith("-0o") || trimmed.startsWith("-0O")) {
                 return -BigInt("0o" + trimmed.slice(3));
+            }
+
+            const suffixed = SUFFIX_RADIX_PATTERN.exec(trimmed);
+            if (suffixed !== null) {
+                const radix = suffixed[3].toLowerCase();
+                const magnitude = BigInt((radix === "h" ? "0x" : `0${radix}`) + suffixed[2]);
+                return suffixed[1] === "-" ? -magnitude : magnitude;
             }
 
             return BigInt(trimmed);
@@ -154,6 +164,7 @@ export class IntegerConversion {
             binaryFormatted: this.formatBinary(binGeneral),
             octal: octGeneral,
             ascii,
+            twosComplementHex: isNegative ? hex64 : undefined,
             bitWidths: {
                 bit8: {
                     unsigned: u8,

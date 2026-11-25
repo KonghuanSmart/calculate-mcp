@@ -1,6 +1,7 @@
 import { IntegerConversion } from "./integer.js";
 
-export type BitwiseOp = "and" | "or" | "xor" | "not" | "shl" | "shr" | "sar" | "rol" | "ror";
+export const BITWISE_OPERATIONS = ["and", "or", "xor", "not", "shl", "shr", "sar", "rol", "ror"] as const;
+export type BitwiseOp = (typeof BITWISE_OPERATIONS)[number];
 export type BitWidth = 8 | 16 | 32 | 64;
 
 export interface BitwiseResult {

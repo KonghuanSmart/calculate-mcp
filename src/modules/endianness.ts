@@ -1,5 +1,7 @@
 import { IntegerConversion } from "./integer.js";
 
+const HEX_BYTE_STREAM_PATTERN = /^(?:[0-9a-fA-F]{2})+$/;
+
 export interface EndiannessResult {
     input: string | number;
     byteCount: number;
@@ -15,7 +17,8 @@ export class Endianness {
      * Normalizes an input (hex string, number, or raw bytes) into a byte array (Big-Endian).
      */
     public static toBytes(input: string | number, widthBytes?: number): number[] {
-        if (typeof input === "number" || (typeof input === "string" && !input.startsWith("0x") && !input.startsWith("0X") && /^-?\d+$/.test(input.trim()))) {
+        const text = typeof input === "string" ? input.trim() : "";
+        if (typeof input === "number" || (!HEX_BYTE_STREAM_PATTERN.test(text) && /^-?\d+$/.test(text))) {
             const bigVal = IntegerConversion.parseToBigInt(input);
             const autoBytes = widthBytes || (bigVal > 0xffffffffn || bigVal < -0x80000000n ? 8 : (bigVal > 0xffffn || bigVal < -0x8000n ? 4 : (bigVal > 0xffn || bigVal < -0x80n ? 2 : 1)));
             const bytes: number[] = [];
